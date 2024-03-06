@@ -69,44 +69,35 @@ export class Client {
     });
   }
 
-  private postRequest(url: string, chunk: string): Promise<[string, number]> {
-    const opts: https.RequestOptions = {
+  private async postRequest(url: string, chunk: string): Promise<[string, number]> {
+    console.log({ url, chunk });
+    const opts: RequestInit = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         authorization: this.apiKey,
       },
-      timeout: 10000,
+      body: chunk,
     };
-    return new Promise((resolve, reject) => {
-      const clientReq = https.request(url, opts, (res) => {
-        if (res.statusCode != 200) {
-          reject(
-            new InvalidStatusError(
-              `bucketeer/api: send HTTP request failed: ${res.statusCode}`,
-              res.statusCode,
-            ),
+
+    try {
+      const res = await fetch(url, opts);
+
+      console.log({ res });
+      if (!res.ok) {
+        if (res.status != 200) {
+          throw new InvalidStatusError(
+            `bucketeer/api: send HTTP request failed: ${res.status}`,
+            res.status,
           );
         }
-        res.setEncoding('utf8');
-        let rawData = '';
-        res.on('data', (chunk: Buffer) => {
-          rawData += chunk.toString();
-        });
-        res.on('end', () => {
-          const header = res.headers['content-length'];
-          resolve([rawData, Number(header || 0)]);
-        });
-      });
-      clientReq.on('error', (e) => {
-        reject(e);
-      });
-      clientReq.write(chunk);
-      clientReq.end();
-      clientReq.on('timeout', () => {
-        clientReq.destroy();
-      });
-    });
+      }
+
+      return [await res.text(), Number(res.headers.get('content-length') || 0)];
+    } catch (error) {
+      console.log({ error });
+      throw error;
+    }
   }
 }
 

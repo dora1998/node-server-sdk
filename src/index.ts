@@ -3,7 +3,6 @@ import { EventStore } from './stores/EventStore';
 import { createSchedule, removeSchedule } from './schedule';
 import { GIT_REVISION } from './shared';
 import { Client, InvalidStatusError } from './api/client';
-import { lengthInUtf8Bytes } from './utils/byte';
 import { Config, defaultConfig } from './config';
 import { createDefaultEvaluationEvent, createEvaluationEvent } from './objects/evaluationEvent';
 import { createGoalEvent } from './objects/goalEvent';
@@ -18,7 +17,6 @@ import {
 import { Evaluation } from './objects/evaluation';
 import { Event } from './objects/event';
 import { GetEvaluationResponse } from './objects/response';
-import typeUtils from 'node:util/types';
 import { ApiId, NodeApiIds } from './objects/apiId';
 import {
   createBadRequestErrorMetricsEvent,
@@ -225,10 +223,6 @@ export function initialize(config: Config): Bucketeer {
     registerEvents();
   }
 
-  function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-    return typeUtils.isNativeError(error);
-  }
-
   function saveErrorMetricsEvent(e: any, apiId: NodeApiIds) {
     if (e instanceof InvalidStatusError) {
       switch (e.code) {
@@ -258,21 +252,6 @@ export function initialize(config: Config): Bucketeer {
           break;
         default:
           saveUnknownErrorMetricsEvent(tag, apiId);
-          break;
-      }
-      return;
-    }
-    if (isNodeError(e)) {
-      switch (e.code) {
-        case 'ECONNRESET':
-          saveTimeoutErrorMetricsEvent(tag, apiId);
-          break;
-        case 'EHOSTUNREACH':
-        case 'ECONNREFUSED':
-          saveNetworkErrorMetricsEvent(tag, apiId);
-          break;
-        default:
-          saveInternalSdkErrorMetricsEvent(tag, apiId);
           break;
       }
       return;
